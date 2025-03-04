@@ -9,6 +9,7 @@ from tkinter import ttk, scrolledtext
 import threading
 import queue
 import datetime
+import logging
 from PIL import Image, ImageTk
 import math
 import os
@@ -350,28 +351,55 @@ class VoiceAssistantGUI:
         else:
             self.start_button.config(text="Start Listening")
             
+    class GUILogHandler(logging.Handler):
+        """Custom handler to route logs to the GUI"""
+        def __init__(self, gui):
+            super().__init__()
+            self.gui = gui
+
+        def emit(self, record):
+            # Map logging levels to our GUI log levels
+            level_map = {
+                'DEBUG': 'info',
+                'INFO': 'info',
+                'WARNING': 'warning',
+                'ERROR': 'error',
+                'CRITICAL': 'error',
+                'SUCCESS': 'success'
+            }
+            gui_level = level_map.get(record.levelname, 'info')
+            
+            # Send to GUI
+            self.gui.update_browser_log(record.getMessage(), gui_level)
+
     async def process_voice_command(self, task):
         """Process the voice command using the AI agent"""
         try:
             llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.0)
             
-            # Log the start of browser task
-            self.update_browser_log("Starting new browser task...", "info")
-            self.update_browser_action("Initializing browser agent")
+            # Configure logging to file and GUI
+            file_handler = logging.FileHandler('log.txt')
+            file_handler.setFormatter(logging.Formatter('[%(asctime)s] %(message)s', 
+                                                      datefmt='%Y-%m-%d %H:%M:%S'))
+            file_handler.setLevel(logging.INFO)  # Changed from getLevelName('RESULT')
+            
+            gui_handler = self.GUILogHandler(self)
+            gui_handler.setLevel(logging.INFO)  # Changed from getLevelName('RESULT')
+            
+            logger = logging.getLogger('browser_use')
+            logger.addHandler(file_handler)
+            logger.addHandler(gui_handler)
             
             # Create and run the agent
             agent = Agent(task=task, llm=llm)
             
-            # Update browser status
-            self.update_browser_log("Browser agent initialized", "success")
-            self.update_browser_action("Processing command")
-            
             # Run the agent
             result = await agent.run()
             
-            # Log completion
-            self.update_browser_log("Browser task completed", "success")
-            self.update_browser_action("Task completed")
+            # Clean up logging
+            logger.removeHandler(file_handler)
+            logger.removeHandler(gui_handler)
+            file_handler.close()
             
             # Humanize the response
             humanized_result = await humanize_response(str(result), llm)

@@ -9,6 +9,7 @@ from tkinter import ttk, scrolledtext
 import threading
 import queue
 import datetime
+import logging
 from PIL import Image, ImageTk
 import math
 import os
@@ -343,6 +344,27 @@ class VoiceAssistantGUI:
         else:
             self.start_button.config(text="Start Listening")
             
+    class GUILogHandler(logging.Handler):
+        """Custom handler to route logs to the GUI"""
+        def __init__(self, gui):
+            super().__init__()
+            self.gui = gui
+
+        def emit(self, record):
+            # Map logging levels to our GUI log levels
+            level_map = {
+                'DEBUG': 'info',
+                'INFO': 'info',
+                'WARNING': 'warning',
+                'ERROR': 'error',
+                'CRITICAL': 'error',
+                'SUCCESS': 'success'
+            }
+            gui_level = level_map.get(record.levelname, 'info')
+            
+            # Send to GUI
+            self.gui.update_browser_log(record.getMessage(), gui_level)
+
     async def process_voice_command(self, task):
         try:
             llm = ChatOpenAI(model="gpt-4o", temperature=0.0)

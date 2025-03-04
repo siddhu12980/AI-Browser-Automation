@@ -1,11 +1,18 @@
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
 
-driver = webdriver.Chrome()
+from speech_handler import SpeechHandler
 
-driver.get("https://www.google.com")
 
-print(driver.title)
+def main():
+    speech_handler = SpeechHandler()
+    while True:
+        success, response = speech_handler.listen_and_respond()
+        if not success:
+            print(f"Error: {response}")
+        
+        user_input = input("Press Enter to continue or 'q' to quit: ")
+        if user_input.lower() == 'q':
+            break
 
-driver.quit()
+if __name__ == "__main__":
+    main()
+

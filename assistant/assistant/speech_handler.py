@@ -4,10 +4,11 @@ import logging
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
-
-# Load environment variables
+import json
+from assistant.agents.browser_agent import BrowserAgent
+from assistant.agents.conversation_agent import ConversationAgent
+from assistant.utils.prompt import prompt
 load_dotenv()
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -18,30 +19,23 @@ class SpeechHandler:
         
         # Initialize text-to-speech engine
         self.engine = pyttsx3.init()
-        
-        # Configure voice properties
         self.engine.setProperty('rate', 150)    # Speed of speech
         self.engine.setProperty('volume', 0.9)  # Volume (0.0 to 1.0)
         
-        # Get available voices and set a good voice
+        # Set voice properties
         voices = self.engine.getProperty('voices')
-        # Try to find a female voice (usually sounds more natural)
         female_voice = next((voice for voice in voices if 'female' in voice.name.lower()), None)
         if female_voice:
             self.engine.setProperty('voice', female_voice.id)
         elif voices:
-            # If no female voice found, use the first available voice
             self.engine.setProperty('voice', voices[0].id)
 
-        # Initialize Groq client
-        groq_api_key = os.getenv('GROQ_API_KEY')
-        if not groq_api_key:
-            raise ValueError("GROQ_API_KEY environment variable is not set")
+        # Initialize OpenAI client
+        self.client = OpenAI()
         
-        self.client = OpenAI(
-            api_key=groq_api_key,
-            base_url="https://api.groq.com/openai/v1"
-        )
+        # Initialize agents
+        self.browser_agent = BrowserAgent(self.client)
+        self.conversation_agent = ConversationAgent(self.client)
         
         # Adjust for ambient noise
         with self.microphone as source:
@@ -59,22 +53,37 @@ class SpeechHandler:
 
     def get_ai_response(self, user_input):
         """
-        Get response from Groq API
+        Get response from AI, determining whether to use browser or conversation agent
         """
         try:
+            # First, determine if this is a browser automation request
             response = self.client.chat.completions.create(
-                model="mixtral-8x7b-32768",  # Using Mixtral model
+                model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "You are a helpful AI assistant. Keep your responses concise and natural."},
+                    {"role": "system", "content": prompt},
                     {"role": "user", "content": user_input}
                 ],
-                temperature=0.7,
-                max_tokens=150
+                temperature=0.7
             )
-            return response.choices[0].message.content
+            
+            # Parse the response
+            logger.info(f"Raw response: {response.choices[0].message.content}")
+            
+            task_type = json.loads(response.choices[0].message.content)
+            
+            logger.info(f"Task type: {task_type}")
+            
+            if task_type.get("is_browser_task"):
+                return self.browser_agent.process_command(user_input)
+            else:
+                return self.conversation_agent.process_conversation(user_input)
+                
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error: {e}")
+            return "I apologize, but I'm having trouble understanding the response format."
         except Exception as e:
-            logger.error(f"Error getting response from Groq: {e}")
-            return "I apologize, but I'm having trouble generating a response right now."
+            logger.error(f"Error getting response: {e}")
+            return "I apologize, but I'm having trouble processing your request."
 
     def listen_and_respond(self):
         """
@@ -88,15 +97,12 @@ class SpeechHandler:
                 audio = self.recognizer.listen(source, timeout=5, phrase_time_limit=5)
                 
             logger.info("Processing speech...")
-            # Using Google's speech recognition
             text = self.recognizer.recognize_google(audio)
             logger.info(f"You said: {text}")
             
-            # Get AI response using Groq
             response = self.get_ai_response(text)
             logger.info(f"AI response: {response}")
             
-            # Speak the response
             self.speak(response)
             return True, response
             
@@ -109,16 +115,7 @@ class SpeechHandler:
         except Exception as e:
             return False, f"An error occurred: {str(e)}"
 
-def main():
-    speech_handler = SpeechHandler()
-    while True:
-        success, response = speech_handler.listen_and_respond()
-        if not success:
-            print(f"Error: {response}")
-        
-        user_input = input("Press Enter to continue or 'q' to quit: ")
-        if user_input.lower() == 'q':
-            break
-
-if __name__ == "__main__":
-    main() 
+    def __del__(self):
+        """Cleanup when the object is destroyed"""
+        if hasattr(self, 'browser_agent'):
+            del self.browser_agent

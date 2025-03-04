@@ -74,6 +74,7 @@ class SpeechHandler:
             logger.info(f"Task type: {task_type}")
             
             if task_type.get("is_browser_task"):
+                
                 return self.browser_agent.process_command(user_input)
             else:
                 return self.conversation_agent.process_conversation(user_input)

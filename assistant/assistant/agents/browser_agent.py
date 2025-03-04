@@ -20,6 +20,8 @@ class BrowserAgent:
         Process user commands and execute browser actions
         """
         try:
+            
+            logger.info(f"User input -------- : {user_input}")
             # Get AI interpretation of the command
             response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
@@ -32,7 +34,9 @@ class BrowserAgent:
             
             # Parse the response
             command = json.loads(response.choices[0].message.content)
-            logger.info(f"Command: {command}")
+            
+            
+            logger.info(f"Command -------- : {command}")
             # Execute the command
             result = self._execute_command(command)
             return result

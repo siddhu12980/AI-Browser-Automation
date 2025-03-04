@@ -17,32 +17,32 @@ prompt = """
 
   **Response Format (valid JSON only, no extra text):**  
   - If the request is a **browser automation task**, return:  
-  ```json
+  
   {
-    \"is_browser_task\": true,
-    \"reason\": \"<brief explanation of why it's a browser task>\"
+    "is_browser_task": true,
+    "reason": "<brief explanation of why it's a browser task>"
   }
   
   - If the request is a **conversation query**, return:
-{
-  \"is_browser_task\": false,
-  \"query\": \"<User query>\"
-}'
+  {
+    "is_browser_task": false,
+    "query": "<User query>"
+  }
 
 
 Example Responses:
 
 User: 'Open YouTube and search for cat videos'
-{\"is_browser_task\": true, \"reason\": \"The user wants to open YouTube and perform a search, which requires browser automation.\"}
+{"is_browser_task": true, "reason": "The user wants to open YouTube and perform a search, which requires browser automation."}
 
 User: 'What is the capital of France?'
-{\"is_browser_task\": false, \"query\": \"What is the capital of France?\"}
+{"is_browser_task": false, "query": "What is the capital of France?"}
 
 User: 'Click on the login button on the website'
-{\"is_browser_task\": true, \"reason\": \"The user wants to click a button on a website, which is a browser task.\"}
+{"is_browser_task": true, "reason": "The user wants to click a button on a website, which is a browser task."}
 
 User: 'Tell me a joke'
-{\"is_browser_task\": false, \"query\": \"Tell me a joke\"}
+{"is_browser_task": false, "query": "Tell me a joke"}
 
 
 Rules:
@@ -67,14 +67,15 @@ browser_task_prompt = """
   - **read**: Extract text from a webpage (e.g., 'Read the first article title')  
 
   **Response Format (valid JSON only, no extra text):**
-  ```json
-    {
-    \"action\": \"navigate|click|type|read\",
-    \"params\": {
-      \"url\": \"string (required for navigate)\",
-      \"selector\": \"string (CSS/XPath selector for click, type, read)\",
-      \"text\": \"string (required for type)\"
+
+  {
+    "action": "navigate|click|type|read",
+    "params": {
+      "url": "string (required for navigate)",
+      "selector": "string (CSS/XPath selector for click, type, read)",
+      "text": "string (required for type)"
     }
+  }
   
 """
 
@@ -89,9 +90,9 @@ conversation_prompt = """
   - Avoid excessive detail or unnecessary elaboration unless explicitly requested.
   
   **Response Format (valid JSON only, no extra text):**
-  ```json
+
   {
-    \"response\": \"string (your reply to the user)\",
-    \"type\": \"conversation\"
+    "response": "string (your reply to the user)",
+    "type": "conversation"
   }
 """

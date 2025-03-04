@@ -22,7 +22,7 @@ class ConversationAgent:
             
             # Parse the JSON response
             json_response = response.choices[0].message.content
-            logger.info(f"Raw JSON response: {json_response}")
+            logger.info(f"Raw JSON response in conversation agent: {json_response}")
             
             # Convert the string to a dictionary
             response_dict = json.loads(json_response)
